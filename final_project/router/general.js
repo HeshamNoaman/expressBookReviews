@@ -22,57 +22,90 @@ public_users.post("/register", (req, res) => {
   return res.status(404).json({ message: "Unable to register user." });
 });
 
+function getBookList() {
+  return new Promise((resolve, reject) => {
+    resolve(books);
+  })
+}
 
 // Get the book list available in the shop
-public_users.get('/', function (req, res) {
-  res.send(JSON.stringify(books, null, 4));
+public_users.get('/', (req, res) => {
+  getBookList()
+    .then(bookList => res.send(JSON.stringify(bookList, null, 4)))
+    .catch(error => {
+      console.error('Error fetching book list:', error);
+      res.status(500).send('Error fetching book list');
+    })
 });
+
+function getBookByISBN(isbn) {
+  return new Promise((resolve, reject) => {
+    if (books.hasOwnProperty(isbn)) {
+      resolve(books[isbn])
+    } else {
+      reject(new Error("The provided book does not exist"))
+    }
+  })
+}
 
 // Get book details based on ISBN
 public_users.get('/isbn/:isbn', function (req, res) {
   const isbn = parseInt(req.params.isbn);
-  if (isbn > 0 && isbn < 11) {
-    res.send(books[isbn]);
-  } else {
-    res.send("please provide a valid isbn form 1 to 12");
-  }
+
+  getBookByISBN(isbn)
+    .then(
+      (book) => res.send(book),
+      (err) => res.status(404).send(err.message)
+    );
 });
+
+function getBookByAuthor(author) {
+  return new Promise((resolve, reject) => {
+
+    for (let key in books) {
+      if (books[key].author.includes(author)) {
+        resolve(books[key])
+      }
+    }
+    reject(new Error("there is no author found"))
+
+  })
+}
 
 // Get book details based on author
 public_users.get('/author/:author', function (req, res) {
   const author = req.params.author;
-  const founded = [];
 
-  for (let key in books) {
-    if (books[key].author.includes(author)) {
-      founded.push(books[key]);
-      // or use to get single item
-      // res.send(books[key]);
-    }
-  }
-
-  if (founded.length > 0) {
-    res.send(founded);
-  } else {
-    // if there is no match display error message
-    res.send("there is no author found");
-  }
-
+  getBookByAuthor(author)
+    .then(
+      (book) => res.send(book),
+      (err) => res.status(404).send(err.message)
+    )
 });
+
+function getBookByTitle(title) {
+  return new Promise((resolve, reject) => {
+
+    for (let key in books) {
+      if (books[key].title.includes(title)) {
+        // to get single book
+        resolve(books[key])
+      }
+    }
+    // if there is no match display error message
+    reject(new Error("there is no book found"));
+  })
+}
 
 // Get all books based on title
 public_users.get('/title/:title', function (req, res) {
   const title = req.params.title;
 
-  for (let key in books) {
-    if (books[key].title.includes(title)) {
-      // to get single book
-      return res.send(books[key]);
-    }
-  }
-
-  // if there is no match display error message
-  return res.send("there is no book found");
+  getBookByTitle(title)
+    .then(
+      (book) => res.send(book),
+      (err) => res.status(404).send(err.message)
+    )
 });
 
 //  Get book review
